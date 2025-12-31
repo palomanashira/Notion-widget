@@ -366,5 +366,188 @@
       let from = now, to = target;
       if (target < now) { sign = "−"; from = target; to = now; }
 
-      const parts = breakdown(
+      const parts = breakdown(from, to, units);
+      big.textContent = sign + formatParts(parts, units, unitStyle);
 
+      if (sub) sub.textContent = `Target: ${dateStr} • Units: ${units}`;
+    }
+
+    tick();
+    setInterval(tick, 60 * 60 * 1000);
+  }
+
+  // -------- Builder Mode --------
+  function renderBuilder() {
+    const app = document.getElementById("app");
+    app.innerHTML = `
+      <div class="page">
+        <h1>Notion Countdown Widgets</h1>
+        <p>Create a countdown and embed it in Notion. Preview is below.</p>
+
+        <div class="card">
+          <h2 style="margin:0 0 8px; font-size:16px;">Create a widget</h2>
+
+          <label>Label (optional)</label>
+          <input id="label" placeholder="e.g., Until submission" />
+
+          <label>Target date</label>
+          <input id="date" type="date" />
+
+          <label>Units to display</label>
+          <div class="checks">
+            <label class="check"><input type="checkbox" id="uY" /> Years</label>
+            <label class="check"><input type="checkbox" id="uM" /> Months</label>
+            <label class="check"><input type="checkbox" id="uD" checked /> Days</label>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Unit labels</label>
+              <select id="unitStyle">
+                <option value="short" selected>Short (e.g., 1y 2m 3d)</option>
+                <option value="words">Words (e.g., 1 year 2 months 3 days)</option>
+              </select>
+            </div>
+            <div>
+              <label>When it’s today</label>
+              <input id="todayText" value="0d" />
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Number size</label>
+              <select id="size">
+                <option value="32">Small</option>
+                <option value="48" selected>Medium</option>
+                <option value="64">Large</option>
+                <option value="88">Huge</option>
+              </select>
+            </div>
+            <div>
+              <label>Background</label>
+              <select id="transparent">
+                <option value="1" selected>Transparent (best for Notion)</option>
+                <option value="0">Card background</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="row">
+            <div>
+              <label>Show label</label>
+              <select id="showLabel">
+                <option value="1" selected>Yes</option>
+                <option value="0">No</option>
+              </select>
+            </div>
+            <div>
+              <label>Show “Target / Units” line</label>
+              <select id="showSub">
+                <option value="0" selected>No</option>
+                <option value="1">Yes</option>
+              </select>
+            </div>
+          </div>
+
+          <div style="margin-top:14px" class="row">
+            <button class="btn" id="gen">Generate link</button>
+            <button class="btn" id="copy">Copy link</button>
+          </div>
+
+          <label style="margin-top:14px;">Widget URL (embed this in Notion)</label>
+          <div class="code" id="out">Click “Generate link”.</div>
+
+          <div class="hint">
+            In Notion: <b>Callout</b> → inside it type <b>/embed</b> → paste the widget URL.
+            Resize the embed height (~120–220px).
+          </div>
+        </div>
+
+        <div class="card">
+          <h2 style="margin:0; font-size:16px;">Preview</h2>
+          <div class="previewBox">
+            <iframe id="prev" title="Widget preview" src=""></iframe>
+          </div>
+          <div class="hint">This preview uses the same URL you’ll embed in Notion.</div>
+        </div>
+      </div>
+    `;
+
+    const $ = (id) => document.getElementById(id);
+
+    // default date: 30 days ahead
+    const dt = new Date();
+    dt.setDate(dt.getDate() + 30);
+    $("date").value = dt.toISOString().slice(0, 10);
+
+    function selectedUnits() {
+      const y = $("uY").checked;
+      const m = $("uM").checked;
+      const d = $("uD").checked;
+      const units = (y ? "y" : "") + (m ? "m" : "") + (d ? "d" : "");
+      return units || "d";
+    }
+
+    function buildUrl() {
+      const label = safeText($("label").value, 60);
+      const date = $("date").value;
+      const todayText = safeText($("todayText").value || "0d", 40);
+
+      const units = selectedUnits();
+      const unitStyle = $("unitStyle").value;
+
+      const size = $("size").value;
+      const transparent = $("transparent").value;
+      const showLabel = $("showLabel").value;
+      const showSub = $("showSub").value;
+
+      const u = new URL(baseUrl());
+      u.searchParams.set("mode", "widget");
+      u.searchParams.set("date", date);
+      if (label) u.searchParams.set("label", label);
+      u.searchParams.set("todayText", todayText);
+
+      u.searchParams.set("units", units);
+      u.searchParams.set("unitStyle", unitStyle);
+
+      u.searchParams.set("size", size);
+      u.searchParams.set("transparent", transparent);
+      u.searchParams.set("showLabel", showLabel);
+      u.searchParams.set("showSub", showSub);
+
+      return u.toString();
+    }
+
+    function update() {
+      const url = buildUrl();
+      $("out").textContent = url;
+      $("prev").src = url;
+    }
+
+    $("gen").addEventListener("click", update);
+
+    ["label","date","todayText","unitStyle","size","transparent","showLabel","showSub","uY","uM","uD"]
+      .forEach(id => $(id).addEventListener("input", update));
+
+    $("copy").addEventListener("click", async () => {
+      const url = buildUrl();
+      try {
+        await navigator.clipboard.writeText(url);
+        $("out").textContent = url + "  ✅ copied";
+      } catch {
+        $("out").textContent = url + "  (copy failed — select and copy manually)";
+      }
+      $("prev").src = url;
+    });
+
+    update();
+  }
+
+  // -------- Router --------
+  const mode = qs().get("mode");
+  if (mode === "widget") renderWidget();
+  else renderBuilder();
+</script>
+</body>
+</html>
