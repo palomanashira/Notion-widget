@@ -4,6 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Notion Countdown Widgets</title>
+
+  <!-- Helps browsers render form controls correctly in light/dark -->
+  <meta name="color-scheme" content="light dark" />
+
   <style>
     :root {
       --pad: 14px;
@@ -11,7 +15,7 @@
       --border: rgba(0,0,0,.12);
       --text: rgba(0,0,0,.88);
       --muted: rgba(0,0,0,.6);
-      --bg: transparent; /* good for Notion embeds */
+      --bg: transparent; /* important for Notion */
       --card: rgba(255,255,255,.72);
       --shadow: 0 6px 18px rgba(0,0,0,.08);
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -20,16 +24,18 @@
     @media (prefers-color-scheme: dark) {
       :root {
         --border: rgba(255,255,255,.16);
-        --text: rgba(255,255,255,.9);
+        --text: rgba(255,255,255,.92);
         --muted: rgba(255,255,255,.65);
         --card: rgba(20,20,20,.55);
         --shadow: 0 10px 24px rgba(0,0,0,.28);
       }
     }
-    html, body { height: 100%; background: var(--bg); }
+
+    /* Force true transparency */
+    html, body { height: 100%; background: transparent !important; }
     body { margin: 0; font-family: var(--sans); color: var(--text); }
 
-    /* Widget layout */
+    /* -------- Widget mode -------- */
     .widgetWrap {
       min-height: 100%;
       display: flex;
@@ -37,8 +43,11 @@
       justify-content: center;
       padding: 10px;
       box-sizing: border-box;
+      background: transparent !important;
     }
-    .widget {
+
+    /* Card-style widget (non-transparent mode) */
+    .widgetCard {
       width: 100%;
       max-width: 520px;
       border: 1px solid var(--border);
@@ -49,6 +58,19 @@
       box-sizing: border-box;
       text-align: center;
     }
+
+    /* Plain widget (transparent mode): no background, no border */
+    .widgetPlain {
+      width: 100%;
+      max-width: 520px;
+      padding: 6px 8px;
+      box-sizing: border-box;
+      text-align: center;
+      background: transparent !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+
     .label {
       font-size: 14px;
       color: var(--muted);
@@ -69,9 +91,9 @@
       color: var(--muted);
     }
 
-    /* Builder layout */
+    /* -------- Builder mode -------- */
     .page {
-      max-width: 980px;
+      max-width: 880px;
       margin: 0 auto;
       padding: 26px 16px 40px;
       box-sizing: border-box;
@@ -83,27 +105,13 @@
       box-shadow: var(--shadow);
       padding: 18px;
       box-sizing: border-box;
+      margin-bottom: 14px; /* preview goes underneath */
     }
     h1 { margin: 0 0 6px; font-size: 22px; }
     p { margin: 0 0 14px; color: var(--muted); line-height: 1.4; }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1.35fr 0.9fr;
-      gap: 14px;
-      align-items: start;
-    }
-    @media (max-width: 860px) {
-      .grid { grid-template-columns: 1fr; }
-    }
-
-    /* Make the preview sit nicely (not “too high”) and stay visible on desktop */
-    .previewCard { align-self: start; }
-    @media (min-width: 861px) {
-      .previewCard { position: sticky; top: 18px; }
-    }
-
     label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 6px; }
+
     input, select {
       width: 100%;
       padding: 10px 12px;
@@ -117,8 +125,10 @@
     @media (prefers-color-scheme: dark) {
       input, select { background: rgba(0,0,0,.25); }
     }
+
     .row { display: flex; gap: 10px; align-items: center; }
     .row > * { flex: 1; }
+    @media (max-width: 760px) { .row { flex-direction: column; align-items: stretch; } }
 
     .btn {
       display: inline-block;
@@ -150,17 +160,14 @@
     }
 
     .previewBox {
-      height: 220px;
+      height: 210px;
       border-radius: 12px;
       overflow: hidden;
       border: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: transparent;
+      background: transparent !important;
       margin-top: 10px;
     }
-    iframe { width: 100%; height: 100%; border: 0; background: transparent; }
+    iframe { width: 100%; height: 100%; border: 0; background: transparent !important; }
 
     .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
 
@@ -194,7 +201,6 @@
   <div id="app"></div>
 
 <script>
-  // ---------- Helpers ----------
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
   function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
@@ -206,7 +212,6 @@
   function startOfLocalDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 
   function parseISODate(iso) {
-    // expects YYYY-MM-DD
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
     if (!m) return null;
     const y = +m[1], mo = +m[2], da = +m[3];
@@ -215,9 +220,7 @@
     return startOfLocalDay(dt);
   }
 
-  function daysInMonth(y, m0) {
-    return new Date(y, m0 + 1, 0).getDate();
-  }
+  function daysInMonth(y, m0) { return new Date(y, m0 + 1, 0).getDate(); }
 
   function addYearsSafe(date, years) {
     const y = date.getFullYear() + years;
@@ -225,50 +228,35 @@
     const d = Math.min(date.getDate(), daysInMonth(y, m));
     return new Date(y, m, d);
   }
-
   function addMonthsSafe(date, months) {
     const y = date.getFullYear();
     const m = date.getMonth();
     const d = date.getDate();
-
     const total = m + months;
     const y2 = y + Math.floor(total / 12);
     let m2 = total % 12;
     if (m2 < 0) m2 += 12;
-
     const d2 = Math.min(d, daysInMonth(y2, m2));
     return new Date(y2, m2, d2);
   }
 
   function floorDiffYears(from, to) {
-    // assumes from <= to
     let y = to.getFullYear() - from.getFullYear();
     let cand = addYearsSafe(from, y);
-    if (cand > to) {
-      y--;
-      cand = addYearsSafe(from, y);
-    }
+    if (cand > to) { y--; cand = addYearsSafe(from, y); }
     return Math.max(0, y);
   }
-
   function floorDiffMonths(from, to) {
-    // assumes from <= to
     let m = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
     let cand = addMonthsSafe(from, m);
-    if (cand > to) {
-      m--;
-      cand = addMonthsSafe(from, m);
-    }
+    if (cand > to) { m--; cand = addMonthsSafe(from, m); }
     return Math.max(0, m);
   }
-
   function diffDays(from, to) {
-    // assumes from <= to, both at start-of-day
     return Math.round((to - from) / MS_PER_DAY);
   }
 
   function normalizeUnits(unitsStr) {
-    // keep only y/m/d, order ymd, default d
     const s = (unitsStr || "").toLowerCase();
     const y = s.includes("y");
     const m = s.includes("m");
@@ -277,37 +265,9 @@
     return out || "d";
   }
 
-  function formatParts(parts, units, unitStyle) {
-    // units is normalized string like "d", "ymd", etc.
-    const long = (n, sing, plur) => `${n} ${n === 1 ? sing : plur}`;
-    const short = (n, sym) => `${n}${sym}`;
-
-    // single unit: always show, even if 0
-    if (units === "d") return unitStyle === "short" ? short(parts.d, "d") : long(parts.d, "day", "days");
-    if (units === "m") return unitStyle === "short" ? short(parts.m, "m") : long(parts.m, "month", "months");
-    if (units === "y") return unitStyle === "short" ? short(parts.y, "y") : long(parts.y, "year", "years");
-
-    // combos: omit zeros, but keep at least one piece if all zero
-    const pieces = [];
-    if (units.includes("y") && parts.y) pieces.push(unitStyle === "short" ? short(parts.y, "y") : long(parts.y, "year", "years"));
-    if (units.includes("m") && parts.m) pieces.push(unitStyle === "short" ? short(parts.m, "m") : long(parts.m, "month", "months"));
-    if (units.includes("d") && parts.d) pieces.push(unitStyle === "short" ? short(parts.d, "d") : long(parts.d, "day", "days"));
-
-    if (pieces.length === 0) {
-      // all zero in a combo: show 0 of the smallest selected unit
-      if (units.includes("d")) return unitStyle === "short" ? "0d" : "0 days";
-      if (units.includes("m")) return unitStyle === "short" ? "0m" : "0 months";
-      return unitStyle === "short" ? "0y" : "0 years";
-    }
-    return pieces.join(unitStyle === "short" ? " " : " ");
-  }
-
   function breakdown(from, to, units) {
-    // returns {y,m,d} for selected units, using floor calendar arithmetic
-    // assumes from <= to
     let cursor = new Date(from.getTime());
     const out = { y: 0, m: 0, d: 0 };
-
     if (units.includes("y")) {
       out.y = floorDiffYears(cursor, to);
       cursor = addYearsSafe(cursor, out.y);
@@ -322,18 +282,38 @@
     return out;
   }
 
-  function qs() { return new URLSearchParams(location.search); }
-  function baseUrl() {
-    // preserves repo path on GitHub Pages
-    return location.origin + location.pathname.replace(/\/$/, "/");
+  function formatParts(parts, units, unitStyle) {
+    const long = (n, sing, plur) => `${n} ${n === 1 ? sing : plur}`;
+    const short = (n, sym) => `${n}${sym}`;
+
+    // single unit: always show even if 0
+    if (units === "d") return unitStyle === "short" ? short(parts.d, "d") : long(parts.d, "day", "days");
+    if (units === "m") return unitStyle === "short" ? short(parts.m, "m") : long(parts.m, "month", "months");
+    if (units === "y") return unitStyle === "short" ? short(parts.y, "y") : long(parts.y, "year", "years");
+
+    // combos: omit zeros, but show 0 of smallest selected if all zero
+    const pieces = [];
+    if (units.includes("y") && parts.y) pieces.push(unitStyle === "short" ? short(parts.y, "y") : long(parts.y, "year", "years"));
+    if (units.includes("m") && parts.m) pieces.push(unitStyle === "short" ? short(parts.m, "m") : long(parts.m, "month", "months"));
+    if (units.includes("d") && parts.d) pieces.push(unitStyle === "short" ? short(parts.d, "d") : long(parts.d, "day", "days"));
+
+    if (pieces.length === 0) {
+      if (units.includes("d")) return unitStyle === "short" ? "0d" : "0 days";
+      if (units.includes("m")) return unitStyle === "short" ? "0m" : "0 months";
+      return unitStyle === "short" ? "0y" : "0 years";
+    }
+    return pieces.join(" ");
   }
 
-  // ---------- Widget Mode ----------
+  function qs() { return new URLSearchParams(location.search); }
+  function baseUrl() { return location.origin + location.pathname.replace(/\/$/, "/"); }
+
+  // -------- Widget Mode --------
   function renderWidget() {
     const params = qs();
 
     const label = safeText(params.get("label") || "Countdown", 60);
-    const dateStr = params.get("date"); // YYYY-MM-DD
+    const dateStr = params.get("date");
     const target = parseISODate(dateStr);
 
     const todayText = safeText(params.get("todayText") || "0d", 40);
@@ -345,17 +325,16 @@
     const showLabel = (params.get("showLabel") || "1") === "1";
     const showSub = (params.get("showSub") || "0") === "1";
 
-    if (transparent) {
-      document.documentElement.style.setProperty("--bg", "transparent");
-      document.documentElement.style.setProperty("--card", "transparent");
-      document.documentElement.style.setProperty("--shadow", "none");
-      document.documentElement.style.setProperty("--border", "transparent");
-    }
+    // Force true transparency
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+
+    const widgetClass = transparent ? "widgetPlain" : "widgetCard";
 
     const app = document.getElementById("app");
     app.innerHTML = `
       <div class="widgetWrap">
-        <div class="widget" aria-label="Countdown widget">
+        <div class="${widgetClass}" aria-label="Countdown widget">
           ${showLabel ? `<div class="label" title="${label}">${label}</div>` : ``}
           <div class="big" id="big" style="font-size:${size}px">…</div>
           ${showSub ? `<div class="small" id="sub"></div>` : ``}
@@ -375,211 +354,17 @@
 
       const now = startOfLocalDay(new Date());
 
-      // Determine sign + compute breakdown on absolute interval
-      let sign = "";
-      let from = now;
-      let to = target;
-
-      if (target < now) {
-        sign = "−"; // nice minus sign
-        from = target;
-        to = now;
-      }
-
-      const parts = breakdown(from, to, units);
-      const formatted = formatParts(parts, units, unitStyle);
-
-      // If exactly today, show todayText (regardless of units)
+      // today shortcut
       if (target.getTime() === now.getTime()) {
         big.textContent = todayText;
-      } else {
-        big.textContent = sign + formatted;
+        if (sub) sub.textContent = showSub ? `Target: ${dateStr} • Units: ${units}` : "";
+        return;
       }
 
-      if (sub) sub.textContent = `Target: ${dateStr} • Units: ${units}`;
-    }
+      // signed breakdown
+      let sign = "";
+      let from = now, to = target;
+      if (target < now) { sign = "−"; from = target; to = now; }
 
-    tick();
-    setInterval(tick, 60 * 60 * 1000); // update hourly
-  }
+      const parts = breakdown(
 
-  // ---------- Builder Mode ----------
-  function renderBuilder() {
-    const app = document.getElementById("app");
-    app.innerHTML = `
-      <div class="page">
-        <h1>Notion Countdown Widgets</h1>
-        <p>Create a countdown and embed it in Notion. This page generates a unique URL for each widget.</p>
-
-        <div class="grid">
-          <div class="card">
-            <h2 style="margin:0 0 8px; font-size:16px;">Create a widget</h2>
-
-            <label>Label (optional)</label>
-            <input id="label" placeholder="e.g., Until submission" />
-
-            <label>Target date</label>
-            <input id="date" type="date" />
-
-            <label>Units to display</label>
-            <div class="checks">
-              <label class="check"><input type="checkbox" id="uY" /> Years</label>
-              <label class="check"><input type="checkbox" id="uM" /> Months</label>
-              <label class="check"><input type="checkbox" id="uD" checked /> Days</label>
-            </div>
-
-            <div class="row">
-              <div>
-                <label>Unit labels</label>
-                <select id="unitStyle">
-                  <option value="short" selected>Short (e.g., 1y 2m 3d)</option>
-                  <option value="words">Words (e.g., 1 year 2 months 3 days)</option>
-                </select>
-              </div>
-              <div>
-                <label>When it’s today</label>
-                <input id="todayText" value="0d" />
-              </div>
-            </div>
-
-            <div class="row">
-              <div>
-                <label>Number size</label>
-                <select id="size">
-                  <option value="32">Small</option>
-                  <option value="48" selected>Medium</option>
-                  <option value="64">Large</option>
-                  <option value="88">Huge</option>
-                </select>
-              </div>
-              <div>
-                <label>Style</label>
-                <select id="transparent">
-                  <option value="1" selected>Transparent (best for Notion callouts)</option>
-                  <option value="0">Card background</option>
-                </select>
-              </div>
-            </div>
-
-            <div class="row">
-              <div>
-                <label>Show label</label>
-                <select id="showLabel">
-                  <option value="1" selected>Yes</option>
-                  <option value="0">No</option>
-                </select>
-              </div>
-              <div>
-                <label>Show “Target / Units” line</label>
-                <select id="showSub">
-                  <option value="0" selected>No</option>
-                  <option value="1">Yes</option>
-                </select>
-              </div>
-            </div>
-
-            <div style="margin-top:14px" class="row">
-              <button class="btn" id="gen">Generate link</button>
-              <button class="btn" id="copy">Copy link</button>
-            </div>
-
-            <label style="margin-top:14px;">Widget URL (embed this in Notion)</label>
-            <div class="code" id="out">Click “Generate link”.</div>
-
-            <div class="hint">
-              In Notion: put a <b>Callout</b> → inside it type <b>/embed</b> → paste the widget URL.
-              Then drag the embed height to fit (usually ~120–200px).
-            </div>
-          </div>
-
-          <div class="card previewCard">
-            <h2 style="margin:0; font-size:16px;">Preview</h2>
-            <div class="previewBox">
-              <iframe id="prev" title="Widget preview" src=""></iframe>
-            </div>
-            <div class="hint">
-              This preview uses the exact URL you’ll embed in Notion.
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-    const $ = (id) => document.getElementById(id);
-
-    // Set default date to 30 days from now
-    const dt = new Date();
-    dt.setDate(dt.getDate() + 30);
-    $("date").value = dt.toISOString().slice(0, 10);
-
-    function selectedUnits() {
-      const y = $("uY").checked;
-      const m = $("uM").checked;
-      const d = $("uD").checked;
-      const units = (y ? "y" : "") + (m ? "m" : "") + (d ? "d" : "");
-      return units || "d"; // never empty
-    }
-
-    function buildUrl() {
-      const label = safeText($("label").value, 60);
-      const date = $("date").value; // YYYY-MM-DD
-      const todayText = safeText($("todayText").value || "0d", 40);
-
-      const units = selectedUnits();
-      const unitStyle = $("unitStyle").value;
-
-      const size = $("size").value;
-      const transparent = $("transparent").value;
-      const showLabel = $("showLabel").value;
-      const showSub = $("showSub").value;
-
-      const u = new URL(baseUrl());
-      u.searchParams.set("mode", "widget");
-      u.searchParams.set("date", date);
-      if (label) u.searchParams.set("label", label);
-      u.searchParams.set("todayText", todayText);
-
-      u.searchParams.set("units", units);
-      u.searchParams.set("unitStyle", unitStyle);
-
-      u.searchParams.set("size", size);
-      u.searchParams.set("transparent", transparent);
-      u.searchParams.set("showLabel", showLabel);
-      u.searchParams.set("showSub", showSub);
-
-      return u.toString();
-    }
-
-    function update() {
-      const url = buildUrl();
-      $("out").textContent = url;
-      $("prev").src = url;
-    }
-
-    $("gen").addEventListener("click", update);
-
-    // Live-update preview when inputs change
-    ["label","date","todayText","unitStyle","size","transparent","showLabel","showSub","uY","uM","uD"]
-      .forEach(id => $(id).addEventListener("input", update));
-
-    $("copy").addEventListener("click", async () => {
-      const url = buildUrl();
-      try {
-        await navigator.clipboard.writeText(url);
-        $("out").textContent = url + "  ✅ copied";
-      } catch {
-        $("out").textContent = url + "  (copy failed — select and copy manually)";
-      }
-      $("prev").src = url;
-    });
-
-    update();
-  }
-
-  // ---------- Router ----------
-  const mode = qs().get("mode");
-  if (mode === "widget") renderWidget();
-  else renderBuilder();
-</script>
-</body>
-</html>
