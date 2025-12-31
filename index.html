@@ -4,115 +4,106 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Notion Countdown Widgets</title>
-
-  <!-- Helps browsers render form controls correctly in light/dark -->
   <meta name="color-scheme" content="light dark" />
-
   <style>
-    :root {
-      --pad: 14px;
+    :root{
       --radius: 14px;
       --border: rgba(0,0,0,.12);
       --text: rgba(0,0,0,.88);
       --muted: rgba(0,0,0,.6);
-      --bg: transparent; /* important for Notion */
-      --card: rgba(255,255,255,.72);
-      --shadow: 0 6px 18px rgba(0,0,0,.08);
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+
+      /* Notion-ish font stacks */
+      --font-default: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --font-serif: ui-serif, Georgia, "Times New Roman", Times, serif;
+      --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+      /* Widget variables set by JS */
+      --widget-font: var(--font-default);
+      --widget-bg: transparent;
+      --widget-border: transparent;
+      --widget-shadow: none;
+      --widget-pad: 8px;
     }
-    @media (prefers-color-scheme: dark) {
-      :root {
+    @media (prefers-color-scheme: dark){
+      :root{
         --border: rgba(255,255,255,.16);
         --text: rgba(255,255,255,.92);
         --muted: rgba(255,255,255,.65);
-        --card: rgba(20,20,20,.55);
-        --shadow: 0 10px 24px rgba(0,0,0,.28);
       }
     }
 
-    /* Force true transparency */
+    /* IMPORTANT: try to force transparency inside the iframe */
     html, body { height: 100%; background: transparent !important; }
-    body { margin: 0; font-family: var(--sans); color: var(--text); }
+    body { margin: 0; color: var(--text); font-family: var(--font-default); }
 
-    /* -------- Widget mode -------- */
-    .widgetWrap {
+    /* ---------- Widget mode ---------- */
+    .widgetWrap{
       min-height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       padding: 10px;
-      box-sizing: border-box;
+      box-sizing:border-box;
       background: transparent !important;
+      font-family: var(--widget-font);
     }
 
-    /* Card-style widget (non-transparent mode) */
-    .widgetCard {
-      width: 100%;
-      max-width: 520px;
-      border: 1px solid var(--border);
+    .widgetBox{
+      width:100%;
+      max-width:520px;
+      box-sizing:border-box;
+      text-align:center;
+
+      background: var(--widget-bg) !important;
+      border: 1px solid var(--widget-border) !important;
+      box-shadow: var(--widget-shadow) !important;
       border-radius: var(--radius);
-      background: var(--card);
-      box-shadow: var(--shadow);
-      padding: var(--pad);
-      box-sizing: border-box;
-      text-align: center;
+      padding: var(--widget-pad);
     }
 
-    /* Plain widget (transparent mode): no background, no border */
-    .widgetPlain {
-      width: 100%;
-      max-width: 520px;
-      padding: 6px 8px;
-      box-sizing: border-box;
-      text-align: center;
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-    }
-
-    .label {
+    .label{
       font-size: 14px;
       color: var(--muted);
       margin-bottom: 8px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
     }
-    .big {
-      font-size: 48px;
+    .big{
       font-weight: 800;
       line-height: 1.0;
       letter-spacing: -0.02em;
     }
-    .small {
+    .small{
       margin-top: 8px;
       font-size: 14px;
       color: var(--muted);
     }
 
-    /* -------- Builder mode -------- */
-    .page {
+    /* ---------- Builder mode ---------- */
+    .page{
       max-width: 880px;
       margin: 0 auto;
       padding: 26px 16px 40px;
-      box-sizing: border-box;
+      box-sizing:border-box;
+      font-family: var(--font-default);
     }
-    .card {
+    .card{
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      background: var(--card);
-      box-shadow: var(--shadow);
+      background: rgba(255,255,255,.72);
       padding: 18px;
-      box-sizing: border-box;
-      margin-bottom: 14px; /* preview goes underneath */
+      box-sizing:border-box;
+      margin-bottom: 14px;
     }
-    h1 { margin: 0 0 6px; font-size: 22px; }
-    p { margin: 0 0 14px; color: var(--muted); line-height: 1.4; }
+    @media (prefers-color-scheme: dark){
+      .card{ background: rgba(20,20,20,.55); }
+    }
+    h1{ margin:0 0 6px; font-size: 22px; }
+    p{ margin:0 0 14px; color: var(--muted); line-height: 1.4; }
 
-    label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 6px; }
-
-    input, select {
+    label{ display:block; font-size:13px; color: var(--muted); margin:10px 0 6px; }
+    input, select{
       width: 100%;
       padding: 10px 12px;
       border: 1px solid var(--border);
@@ -122,79 +113,90 @@
       box-sizing: border-box;
       outline: none;
     }
-    @media (prefers-color-scheme: dark) {
-      input, select { background: rgba(0,0,0,.25); }
+    @media (prefers-color-scheme: dark){
+      input, select{ background: rgba(0,0,0,.25); }
     }
 
-    .row { display: flex; gap: 10px; align-items: center; }
-    .row > * { flex: 1; }
-    @media (max-width: 760px) { .row { flex-direction: column; align-items: stretch; } }
+    .row{ display:flex; gap:10px; align-items:center; }
+    .row > *{ flex:1; }
+    @media (max-width: 760px){
+      .row{ flex-direction: column; align-items: stretch; }
+    }
 
-    .btn {
-      display: inline-block;
+    .btn{
+      display:inline-block;
       border: 1px solid var(--border);
       background: rgba(255,255,255,.65);
       color: var(--text);
       padding: 10px 12px;
       border-radius: 12px;
-      cursor: pointer;
-      font-weight: 650;
-      user-select: none;
+      cursor:pointer;
+      font-weight:650;
+      user-select:none;
     }
-    @media (prefers-color-scheme: dark) {
-      .btn { background: rgba(0,0,0,.2); }
+    @media (prefers-color-scheme: dark){
+      .btn{ background: rgba(0,0,0,.2); }
     }
 
-    .code {
-      font-family: var(--mono);
+    .code{
+      font-family: var(--font-mono);
       font-size: 12px;
       white-space: nowrap;
-      overflow: auto;
+      overflow:auto;
       border: 1px dashed var(--border);
       border-radius: 12px;
       padding: 10px 12px;
       background: rgba(255,255,255,.4);
     }
-    @media (prefers-color-scheme: dark) {
-      .code { background: rgba(0,0,0,.18); }
+    @media (prefers-color-scheme: dark){
+      .code{ background: rgba(0,0,0,.18); }
     }
 
-    .previewBox {
-      height: 210px;
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1px solid var(--border);
-      background: transparent !important;
-      margin-top: 10px;
-    }
-    iframe { width: 100%; height: 100%; border: 0; background: transparent !important; }
-
-    .hint { font-size: 12px; color: var(--muted); margin-top: 10px; }
-
-    /* Checkbox row for units */
-    .checks {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
+    .checks{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
       padding: 10px 12px;
       border: 1px solid var(--border);
       border-radius: 10px;
       background: rgba(255,255,255,.35);
-      box-sizing: border-box;
+      box-sizing:border-box;
     }
-    @media (prefers-color-scheme: dark) {
-      .checks { background: rgba(0,0,0,.14); }
+    @media (prefers-color-scheme: dark){
+      .checks{ background: rgba(0,0,0,.14); }
     }
-    .check {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
+    .check{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+      margin:0;
+      user-select:none;
       color: var(--text);
-      margin: 0;
-      user-select: none;
     }
-    .check input { width: 16px; height: 16px; padding: 0; margin: 0; }
+    .check input{ width:16px; height:16px; margin:0; }
+
+    .previewBox{
+      height: 220px;
+      border-radius: 12px;
+      overflow:hidden;
+      border: 1px solid var(--border);
+      background: transparent !important;
+      margin-top: 10px;
+    }
+    iframe{ width:100%; height:100%; border:0; background: transparent !important; }
+
+    .hint{ font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+    .inlineRow{
+      display:flex; gap:10px; align-items:center;
+    }
+    .inlineRow > *{ flex: 1; }
+    .bgRow{
+      display:flex; gap:10px; align-items:center;
+    }
+    .bgRow .grow{ flex: 2; }
+    .bgRow .shrink{ flex: 1; }
   </style>
 </head>
 <body>
@@ -203,114 +205,144 @@
 <script>
   const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
-  function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
-  function safeText(s, maxLen = 80) {
-    s = (s ?? "").toString().replace(/\s+/g, " ").trim();
-    if (s.length > maxLen) s = s.slice(0, maxLen) + "…";
+  function qs() { return new URLSearchParams(location.search); }
+  function baseUrl() { return location.origin + location.pathname.replace(/\/$/, "/"); }
+
+  function clamp(n,a,b){ return Math.max(a, Math.min(b,n)); }
+  function safeText(s, maxLen=80){
+    s = (s ?? "").toString().replace(/\s+/g," ").trim();
+    if (s.length > maxLen) s = s.slice(0,maxLen) + "…";
     return s;
   }
-  function startOfLocalDay(d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
-
-  function parseISODate(iso) {
+  function startOfLocalDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  function parseISODate(iso){
     const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
     if (!m) return null;
     const y = +m[1], mo = +m[2], da = +m[3];
-    const dt = new Date(y, mo - 1, da);
-    if (dt.getFullYear() !== y || dt.getMonth() !== (mo - 1) || dt.getDate() !== da) return null;
+    const dt = new Date(y, mo-1, da);
+    if (dt.getFullYear() !== y || dt.getMonth() !== (mo-1) || dt.getDate() !== da) return null;
     return startOfLocalDay(dt);
   }
 
-  function daysInMonth(y, m0) { return new Date(y, m0 + 1, 0).getDate(); }
-
-  function addYearsSafe(date, years) {
+  function daysInMonth(y, m0){ return new Date(y, m0+1, 0).getDate(); }
+  function addYearsSafe(date, years){
     const y = date.getFullYear() + years;
     const m = date.getMonth();
-    const d = Math.min(date.getDate(), daysInMonth(y, m));
-    return new Date(y, m, d);
+    const d = Math.min(date.getDate(), daysInMonth(y,m));
+    return new Date(y,m,d);
   }
-  function addMonthsSafe(date, months) {
+  function addMonthsSafe(date, months){
     const y = date.getFullYear();
     const m = date.getMonth();
     const d = date.getDate();
     const total = m + months;
-    const y2 = y + Math.floor(total / 12);
+    const y2 = y + Math.floor(total/12);
     let m2 = total % 12;
     if (m2 < 0) m2 += 12;
-    const d2 = Math.min(d, daysInMonth(y2, m2));
-    return new Date(y2, m2, d2);
+    const d2 = Math.min(d, daysInMonth(y2,m2));
+    return new Date(y2,m2,d2);
   }
-
-  function floorDiffYears(from, to) {
+  function floorDiffYears(from,to){
     let y = to.getFullYear() - from.getFullYear();
-    let cand = addYearsSafe(from, y);
-    if (cand > to) { y--; cand = addYearsSafe(from, y); }
-    return Math.max(0, y);
+    let cand = addYearsSafe(from,y);
+    if (cand > to){ y--; cand = addYearsSafe(from,y); }
+    return Math.max(0,y);
   }
-  function floorDiffMonths(from, to) {
-    let m = (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
-    let cand = addMonthsSafe(from, m);
-    if (cand > to) { m--; cand = addMonthsSafe(from, m); }
-    return Math.max(0, m);
+  function floorDiffMonths(from,to){
+    let m = (to.getFullYear()-from.getFullYear())*12 + (to.getMonth()-from.getMonth());
+    let cand = addMonthsSafe(from,m);
+    if (cand > to){ m--; cand = addMonthsSafe(from,m); }
+    return Math.max(0,m);
   }
-  function diffDays(from, to) {
-    return Math.round((to - from) / MS_PER_DAY);
+  function diffDays(from,to){
+    return Math.round((to - from)/MS_PER_DAY);
   }
-
-  function normalizeUnits(unitsStr) {
+  function normalizeUnits(unitsStr){
     const s = (unitsStr || "").toLowerCase();
-    const y = s.includes("y");
-    const m = s.includes("m");
-    const d = s.includes("d");
-    const out = (y ? "y" : "") + (m ? "m" : "") + (d ? "d" : "");
+    const y = s.includes("y"), m = s.includes("m"), d = s.includes("d");
+    const out = (y?"y":"") + (m?"m":"") + (d?"d":"");
     return out || "d";
   }
-
-  function breakdown(from, to, units) {
+  function breakdown(from,to,units){
     let cursor = new Date(from.getTime());
-    const out = { y: 0, m: 0, d: 0 };
-    if (units.includes("y")) {
-      out.y = floorDiffYears(cursor, to);
-      cursor = addYearsSafe(cursor, out.y);
+    const out = {y:0,m:0,d:0};
+    if (units.includes("y")){
+      out.y = floorDiffYears(cursor,to);
+      cursor = addYearsSafe(cursor,out.y);
     }
-    if (units.includes("m")) {
-      out.m = floorDiffMonths(cursor, to);
-      cursor = addMonthsSafe(cursor, out.m);
+    if (units.includes("m")){
+      out.m = floorDiffMonths(cursor,to);
+      cursor = addMonthsSafe(cursor,out.m);
     }
-    if (units.includes("d")) {
-      out.d = diffDays(cursor, to);
+    if (units.includes("d")){
+      out.d = diffDays(cursor,to);
     }
     return out;
   }
-
-  function formatParts(parts, units, unitStyle) {
-    const long = (n, sing, plur) => `${n} ${n === 1 ? sing : plur}`;
+  function formatParts(parts, units, unitStyle){
+    const long = (n, sing, plur) => `${n} ${n===1?sing:plur}`;
     const short = (n, sym) => `${n}${sym}`;
 
-    // single unit: always show even if 0
-    if (units === "d") return unitStyle === "short" ? short(parts.d, "d") : long(parts.d, "day", "days");
-    if (units === "m") return unitStyle === "short" ? short(parts.m, "m") : long(parts.m, "month", "months");
-    if (units === "y") return unitStyle === "short" ? short(parts.y, "y") : long(parts.y, "year", "years");
+    const words = unitStyle === "words";
+
+    // single unit always show
+    if (units === "d") return words ? long(parts.d,"day","days") : short(parts.d,"d");
+    if (units === "m") return words ? long(parts.m,"month","months") : short(parts.m,"m");
+    if (units === "y") return words ? long(parts.y,"year","years") : short(parts.y,"y");
 
     // combos: omit zeros, but show 0 of smallest selected if all zero
     const pieces = [];
-    if (units.includes("y") && parts.y) pieces.push(unitStyle === "short" ? short(parts.y, "y") : long(parts.y, "year", "years"));
-    if (units.includes("m") && parts.m) pieces.push(unitStyle === "short" ? short(parts.m, "m") : long(parts.m, "month", "months"));
-    if (units.includes("d") && parts.d) pieces.push(unitStyle === "short" ? short(parts.d, "d") : long(parts.d, "day", "days"));
+    if (units.includes("y") && parts.y) pieces.push(words ? long(parts.y,"year","years") : short(parts.y,"y"));
+    if (units.includes("m") && parts.m) pieces.push(words ? long(parts.m,"month","months") : short(parts.m,"m"));
+    if (units.includes("d") && parts.d) pieces.push(words ? long(parts.d,"day","days") : short(parts.d,"d"));
 
-    if (pieces.length === 0) {
-      if (units.includes("d")) return unitStyle === "short" ? "0d" : "0 days";
-      if (units.includes("m")) return unitStyle === "short" ? "0m" : "0 months";
-      return unitStyle === "short" ? "0y" : "0 years";
+    if (pieces.length === 0){
+      if (units.includes("d")) return words ? "0 days" : "0d";
+      if (units.includes("m")) return words ? "0 months" : "0m";
+      return words ? "0 years" : "0y";
     }
     return pieces.join(" ");
   }
 
-  function qs() { return new URLSearchParams(location.search); }
-  function baseUrl() { return location.origin + location.pathname.replace(/\/$/, "/"); }
+  function fontStack(font){
+    switch ((font || "default").toLowerCase()){
+      case "serif": return getComputedStyle(document.documentElement).getPropertyValue("--font-serif").trim();
+      case "mono": return getComputedStyle(document.documentElement).getPropertyValue("--font-mono").trim();
+      default: return getComputedStyle(document.documentElement).getPropertyValue("--font-default").trim();
+    }
+  }
 
-  // -------- Widget Mode --------
-  function renderWidget() {
+  function applyWidgetStyle(params){
+    // Background: truly transparent where possible
+    const bg = (params.get("bg") || "transparent").trim();
+    const frame = (params.get("frame") || "0") === "1"; // frame means border/shadow/padding
+    const font = (params.get("font") || "default").trim();
+
+    document.documentElement.style.setProperty("--widget-font", fontStack(font));
+
+    if (!frame){
+      // minimal / transparent
+      document.documentElement.style.setProperty("--widget-bg", (bg === "" ? "transparent" : bg));
+      document.documentElement.style.setProperty("--widget-border", "transparent");
+      document.documentElement.style.setProperty("--widget-shadow", "none");
+      document.documentElement.style.setProperty("--widget-pad", "6px 8px");
+    } else {
+      // framed “card”
+      document.documentElement.style.setProperty("--widget-bg", (bg === "" ? "rgba(255,255,255,.72)" : bg));
+      document.documentElement.style.setProperty("--widget-border", "var(--border)");
+      document.documentElement.style.setProperty("--widget-shadow", "0 6px 18px rgba(0,0,0,.08)");
+      document.documentElement.style.setProperty("--widget-pad", "14px");
+    }
+
+    // Force iframe page itself transparent (best effort)
+    document.documentElement.style.background = "transparent";
+    document.body.style.background = "transparent";
+  }
+
+  // ---------- Widget Mode ----------
+  function renderWidget(){
     const params = qs();
+    applyWidgetStyle(params);
 
     const label = safeText(params.get("label") || "Countdown", 60);
     const dateStr = params.get("date");
@@ -321,20 +353,13 @@
     const unitStyle = (params.get("unitStyle") || "short") === "words" ? "words" : "short";
 
     const size = clamp(parseInt(params.get("size") || "48", 10) || 48, 22, 120);
-    const transparent = (params.get("transparent") || "1") === "1";
     const showLabel = (params.get("showLabel") || "1") === "1";
     const showSub = (params.get("showSub") || "0") === "1";
-
-    // Force true transparency
-    document.documentElement.style.background = "transparent";
-    document.body.style.background = "transparent";
-
-    const widgetClass = transparent ? "widgetPlain" : "widgetCard";
 
     const app = document.getElementById("app");
     app.innerHTML = `
       <div class="widgetWrap">
-        <div class="${widgetClass}" aria-label="Countdown widget">
+        <div class="widgetBox" aria-label="Countdown widget">
           ${showLabel ? `<div class="label" title="${label}">${label}</div>` : ``}
           <div class="big" id="big" style="font-size:${size}px">…</div>
           ${showSub ? `<div class="small" id="sub"></div>` : ``}
@@ -345,29 +370,23 @@
     const big = document.getElementById("big");
     const sub = document.getElementById("sub");
 
-    function tick() {
-      if (!target) {
+    function tick(){
+      if (!target){
         big.textContent = "Set a date";
-        if (sub) sub.textContent = "Missing or invalid ?date=YYYY-MM-DD";
+        if (sub) sub.textContent = "Missing/invalid ?date=YYYY-MM-DD";
         return;
       }
-
       const now = startOfLocalDay(new Date());
 
-      // today shortcut
-      if (target.getTime() === now.getTime()) {
+      if (target.getTime() === now.getTime()){
         big.textContent = todayText;
-        if (sub) sub.textContent = showSub ? `Target: ${dateStr} • Units: ${units}` : "";
-        return;
+      } else {
+        let sign = "";
+        let from = now, to = target;
+        if (target < now){ sign = "−"; from = target; to = now; }
+        const parts = breakdown(from,to,units);
+        big.textContent = sign + formatParts(parts, units, unitStyle);
       }
-
-      // signed breakdown
-      let sign = "";
-      let from = now, to = target;
-      if (target < now) { sign = "−"; from = target; to = now; }
-
-      const parts = breakdown(from, to, units);
-      big.textContent = sign + formatParts(parts, units, unitStyle);
 
       if (sub) sub.textContent = `Target: ${dateStr} • Units: ${units}`;
     }
@@ -376,13 +395,13 @@
     setInterval(tick, 60 * 60 * 1000);
   }
 
-  // -------- Builder Mode --------
-  function renderBuilder() {
+  // ---------- Builder Mode ----------
+  function renderBuilder(){
     const app = document.getElementById("app");
     app.innerHTML = `
       <div class="page">
         <h1>Notion Countdown Widgets</h1>
-        <p>Create a countdown and embed it in Notion. Preview is below.</p>
+        <p>Create a countdown and embed it in Notion. Preview is at the bottom.</p>
 
         <div class="card">
           <h2 style="margin:0 0 8px; font-size:16px;">Create a widget</h2>
@@ -416,6 +435,14 @@
 
           <div class="row">
             <div>
+              <label>Font</label>
+              <select id="font">
+                <option value="default" selected>Notion Default (sans)</option>
+                <option value="serif">Notion Serif</option>
+                <option value="mono">Notion Mono</option>
+              </select>
+            </div>
+            <div>
               <label>Number size</label>
               <select id="size">
                 <option value="32">Small</option>
@@ -424,13 +451,18 @@
                 <option value="88">Huge</option>
               </select>
             </div>
-            <div>
-              <label>Background</label>
-              <select id="transparent">
-                <option value="1" selected>Transparent (best for Notion)</option>
-                <option value="0">Card background</option>
-              </select>
-            </div>
+          </div>
+
+          <label>Background / frame</label>
+          <div class="bgRow">
+            <select id="bgMode" class="grow">
+              <option value="transparent" selected>Transparent (best effort)</option>
+              <option value="match-callout-light">Match Notion callout (light)</option>
+              <option value="match-callout-dark">Match Notion callout (dark)</option>
+              <option value="custom">Custom colour</option>
+              <option value="card">Card (framed)</option>
+            </select>
+            <input id="bgCustom" class="shrink" type="color" value="#f2f2f2" style="display:none;" />
           </div>
 
           <div class="row">
@@ -459,8 +491,7 @@
           <div class="code" id="out">Click “Generate link”.</div>
 
           <div class="hint">
-            In Notion: <b>Callout</b> → inside it type <b>/embed</b> → paste the widget URL.
-            Resize the embed height (~120–220px).
+            If Notion still shows a white rectangle around the embed, pick “Match Notion callout …” (it’s Notion’s container, not your widget).
           </div>
         </div>
 
@@ -481,15 +512,33 @@
     dt.setDate(dt.getDate() + 30);
     $("date").value = dt.toISOString().slice(0, 10);
 
-    function selectedUnits() {
-      const y = $("uY").checked;
-      const m = $("uM").checked;
-      const d = $("uD").checked;
-      const units = (y ? "y" : "") + (m ? "m" : "") + (d ? "d" : "");
-      return units || "d";
+    function selectedUnits(){
+      const y = $("uY").checked, m = $("uM").checked, d = $("uD").checked;
+      const u = (y?"y":"") + (m?"m":"") + (d?"d":"");
+      return u || "d";
     }
 
-    function buildUrl() {
+    function bgSettings(){
+      const mode = $("bgMode").value;
+      if (mode === "transparent"){
+        return { bg: "transparent", frame: "0" };
+      }
+      if (mode === "match-callout-light"){
+        // approximate Notion callout light background
+        return { bg: "rgba(247,247,245,1)", frame: "0" };
+      }
+      if (mode === "match-callout-dark"){
+        // approximate dark-mode callout tint
+        return { bg: "rgba(37,37,37,0.9)", frame: "0" };
+      }
+      if (mode === "custom"){
+        return { bg: $("bgCustom").value, frame: "0" };
+      }
+      // card (framed) default
+      return { bg: "rgba(255,255,255,.72)", frame: "1" };
+    }
+
+    function buildUrl(){
       const label = safeText($("label").value, 60);
       const date = $("date").value;
       const todayText = safeText($("todayText").value || "0d", 40);
@@ -498,9 +547,11 @@
       const unitStyle = $("unitStyle").value;
 
       const size = $("size").value;
-      const transparent = $("transparent").value;
+      const font = $("font").value;
       const showLabel = $("showLabel").value;
       const showSub = $("showSub").value;
+
+      const { bg, frame } = bgSettings();
 
       const u = new URL(baseUrl());
       u.searchParams.set("mode", "widget");
@@ -512,24 +563,28 @@
       u.searchParams.set("unitStyle", unitStyle);
 
       u.searchParams.set("size", size);
-      u.searchParams.set("transparent", transparent);
+      u.searchParams.set("font", font);
+
+      u.searchParams.set("bg", bg);
+      u.searchParams.set("frame", frame);
+
       u.searchParams.set("showLabel", showLabel);
       u.searchParams.set("showSub", showSub);
 
       return u.toString();
     }
 
-    function update() {
+    function update(){
       const url = buildUrl();
       $("out").textContent = url;
       $("prev").src = url;
     }
 
+    function updateBgCustomVisibility(){
+      $("bgCustom").style.display = ($("bgMode").value === "custom") ? "block" : "none";
+    }
+
     $("gen").addEventListener("click", update);
-
-    ["label","date","todayText","unitStyle","size","transparent","showLabel","showSub","uY","uM","uD"]
-      .forEach(id => $(id).addEventListener("input", update));
-
     $("copy").addEventListener("click", async () => {
       const url = buildUrl();
       try {
@@ -541,10 +596,16 @@
       $("prev").src = url;
     });
 
+    ["label","date","todayText","unitStyle","size","font","showLabel","showSub","uY","uM","uD","bgMode","bgCustom"]
+      .forEach(id => $(id).addEventListener("input", () => {
+        updateBgCustomVisibility();
+        update();
+      }));
+
+    updateBgCustomVisibility();
     update();
   }
 
-  // -------- Router --------
   const mode = qs().get("mode");
   if (mode === "widget") renderWidget();
   else renderBuilder();
